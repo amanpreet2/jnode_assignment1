@@ -6,6 +6,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "dependencies": {
+    "products": "^3.0.3",
+    "restify": "^4.1.1",
+    "save": "^2.3.0"
+  },
   "author": "AmanPreet",
   "license": "ISC"
 }

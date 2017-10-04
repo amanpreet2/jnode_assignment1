@@ -1,30 +1,34 @@
-//load modules
-var SERVER_NAME = 'user-api'
+var SERVER_productname = 'productsapi'
 var PORT = 3000;
 var HOST = '127.0.0.1';
-var http = require('http');
-var url = require('url');
 
-//setting counters
-var postcounter = 0;
+//request counters
 var getcounter = 0;
+
+var postcounter = 0;
+var deletecounter = 0;
 
 
 var restify = require('restify')
 
-  // Get a persistence engine for the users
-  , productsSave = require('save')('products')
+  // Get a persistence engine for the products
+  , productSave = require('save') ('products')
 
   // Create the restify server
-  , server = restify.createServer({ name: SERVER_NAME})
+  , server = restify.createServer({ productname: SERVER_productname})
 
   server.listen(PORT, HOST, function () {
-  console.log('Server is listening at - http://'+ HOST + ":" +PORT)
-  console.log('Endpoints: http://'+ HOST + ':' + PORT + '/sendGet method:GET'  );
-  console.log('Endpoints: http://'+ HOST + ':' + PORT + '/sendPost  method:POSt' );
-  console.log('Resources:')
-  console.log(' /products')
-  console.log(' /products/:id')  
+  console.log('Server %s listening at %s', server.productname, server.url)
+  console.log('below are the services Started:')
+  console.log(' /getProduct')
+  console.log(' /getProduct/:id')
+  console.log(' /createProduct')
+  console.log(' /updateProduct/:id')
+  console.log(' /deleteProduct/:id')
+  console.log('Processed request count --> Get Product: ' +getcounter + ', PostProduct: ' + postcounter + ', Delete ' + deletecounter)
+  
+
+
 })
 
 server
@@ -34,97 +38,122 @@ server
   // Maps req.body to req.params so there is no switching between them
   .use(restify.bodyParser())
 
-
-//---------------------------Get all products ------------------------//
-server.get('/sendGet', function (req, res, next) {
-
-  console.log('>sendGet: received request');
-  console.log("Processed Request Count" + ++getcounter);
-  // Find every entity within the given collection
-  productsSave.find({}, function (error, products) {
+  // Get all products in the system
+server.get('/getProduct', function (req, res, next) {
+    console.log('>>>' + server.url + '/getAllProduct: recieved GET request')
+      // Find every entity within the given collection
+      productSave.find({}, function (error, product) {
     
-    // Return all of the users in the system
-    res.send(products)
-  })
-})
+        // Return all of the products in the system
+  console.log('<<<' + server.url + '/getProduct: sending response')
+        res.send(product)
+  getcounter++;
+  console.log('Processed request count --> Get Product: ' +getcounter + ', PostProduct: ' + postcounter + ', Delete ' + deletecounter)
+      })
+    })
 
+// Get a single product by their product id
+server.get('/getProduct/:id', function (req, res, next) {
+     console.log('>>>' + server.url + '/getProduct:id: recieved GET request')
+      // Find a single product by their id within save
+      productSave.findOne({ _id: req.params.id }, function (error, product) {
+    
+        // If there are any errors, pass them to next in the correct format
+        if (error) return next(new restify.InvalidArgumentError(JSON.stringify(error.errors)))
+    
+        if (product) {
+          // Send the product if no issues
+  console.log('<<<' + server.url + '/getProduct:id: sending response')
+          res.send(product)
+    getcounter++;
+    console.log('Processed request count --> Get Product: ' +getcounter + ', PostProduct: ' + postcounter + ', Delete ' + deletecounter)
+        
+        } else {
+          // Send 404 header if the product doesn't exist
+          res.send(404)
+        }
+      })
+    })
 
-//------------------ Getting a single product by their user id -------------------//
-server.get('/sendGet/:id', function (req, res, next) {
+    // Create a new product
+    server.post('/createProduct', function (req, res, next) {
+    console.log('>>>' + server.url + '/createProduct: recieved POST request')
+      // Make sure productname is defined
+      if (req.params.productname === undefined ) {
+        // If there are any errors, pass them to next in the correct format
+        return next(new restify.InvalidArgumentError('productname must be supplied'))
+      }
+      if (req.params.cost === undefined ) {
+        // If there are any errors, pass them to next in the correct format
+        return next(new restify.InvalidArgumentError('cost must be supplied'))
+      }
+      var newProduct = {
+            productname: req.params.productname, 
+            cost: req.params.cost
+        }
+    
+      // Create the product using the persistence engine
+      productSave.create(newProduct, function (error, product) {
+    
+        // If there are any errors, pass them to next in the correct format
+        if (error) return next(new restify.InvalidArgumentError(JSON.stringify(error.errors)))
+    
+        // Send the product if no issues
+  console.log('<<<' + server.url + '/createProduct: sending response')
+        res.send(201, product)
+        postcounter++;
+       console.log('Processed request count --> Get Product: ' +getcounter + ', PostProduct: ' + postcounter + ', Delete ' + deletecounter)
+      
+      })
+    })
 
-  // Find a single user by their id within save
-  productsSave.findOne({ _id: req.params.id }, function (error, product) {
+// Update a product by their id
+server.put('/updateProduct/:id', function (req, res, next) {
+  console.log('>>>' + server.url + '/updateProduct: recieved POST request')
+    
+      // Make sure productname is defined
+      if (req.params.productname === undefined ) {
+        // If there are any errors, pass them to next in the correct format
+        return next(new restify.InvalidArgumentError('productname must be supplied'))
+      }
+      if (req.params.cost === undefined ) {
+        // If there are any errors, pass them to next in the correct format
+        return next(new restify.InvalidArgumentError('cost must be supplied'))
+      }
+      
+      var newProduct = {
+            _id: req.params.id,
+            productname: req.params.productname, 
+            cost: req.params.cost
+        }
+      
+      // Update the product with the persistence engine
+      productSave.update(newProduct, function (error, product) {
+    
+        // If there are any errors, pass them to next in the correct format
+        if (error) return next(new restify.InvalidArgumentError(JSON.stringify(error.errors)))
+    
+        // Send a 200 OK response
+        res.send(200)
+        console.log('<<<' + server.url + '/updateProduct: sending response')
+        postcounter++;
+       console.log('Processed request count --> Get Product: ' +getcounter + ', PostProduct: ' + postcounter + ', Delete ' + deletecounter)
+      })
+    })
 
-    // If there are any errors, pass them to next in the correct format
-    if (error) return next(new restify.InvalidArgumentError(JSON.stringify(error.errors)))
-
-    if (product) {
-      // Send the user if no issues
-      res.send(product)
-    } else {
-      // Send 404 header if the user doesn't exist
-      res.send(404)
-    }
-  })
-})
-
-
-//------------------------Creating a new product --------------------------------//
-server.post('/sendPost', function (req, res, next) {
-  //request counter showing on the console
-  console.log('<sendPost: sending response');
-  console.log("Processed post request count" +  ++postcounter);
-
-  // Make sure name is defined
-  if (req.params.product === undefined ) {
-    // If there are any errors, pass them to next in the correct format
-    return next(new restify.InvalidArgumentError('name must be supplied'))
-  }
-  if (req.params.price === undefined ) {
-    // If there are any errors, pass them to next in the correct format
-    return next(new restify.InvalidArgumentError('age must be supplied'))
-  }
-  var newproduct = {
-		product: req.params.product, 
-		price: req.params.price
-	}
-
-
-  // Create the user using the persistence engine
-  productsSave.create( newproduct, function (error, product) {
-
-    // If there are any errors, pass them to next in the correct format
-    if (error) return next(new restify.InvalidArgumentError(JSON.stringify(error.errors)))
-
-    // Send the user if no issues
-    res.send(201, product)
-  })
-})
-
-
-// -------------Delete products with the given id-------------//
-server.del('/sendDelete/:id', function (req, res, next) {
-
-  // Delete the user with the persistence engine
-  productsSave.delete(req.params.id, function (error, product) {
-
-    // If there are any errors, pass them to next in the correct format
-    if (error) return next(new restify.InvalidArgumentError(JSON.stringify(error.errors)))
-
-    // Send a 200 OK response
-    res.send()
-  })
-})
-
-
-//----------------deleting all users-------------------//
-server.del('/senddelete', function (req, res, next) {
-  
-     // reset the given collection
-     productsSave = require('save')('products')
-  
-     // Send a 200 OK response
-     res.send("All records deleted.");
- })
-
-
+// Delete product with the given id
+server.del('/deleteProduct/:id', function (req, res, next) {
+  console.log('>>>' + server.url + '/delete: recieved POST request')
+      // Delete the product with the persistence engine
+      productSave.delete(req.params.id, function (error, product) {
+    
+        // If there are any errors, pass them to next in the correct format
+        if (error) return next(new restify.InvalidArgumentError(JSON.stringify(error.errors)))
+    
+        // Send a 204 OK response
+        res.send(204)
+        console.log('<<<' + server.url + '/delete: sending response')
+        deletecounter++;
+       console.log('Processed request count --> Get Product: ' +getcounter + ', PostProduct: ' + postcounter + ', Delete ' + deletecounter)
+      })
+    })
